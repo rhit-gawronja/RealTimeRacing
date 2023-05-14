@@ -19,3 +19,35 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
+const x = document.getElementById("demo");
+const startButton = document.getElementById("raceStart")
+function getLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(showPosition);
+  } else { 
+    x.innerHTML = "Geolocation is not supported by this browser.";
+  }
+}
+
+function showPosition(position) {
+  x.innerHTML = "Latitude: " + position.coords.latitude + 
+  "<br>Longitude: " + position.coords.longitude;
+}
+pos0={
+  long:0,
+  lat:0,
+}
+function getSpeed(position) {
+  longitude0=position.coords.longitude
+  latitude0=position.coords.latitude
+  // postition updater
+  setInterval(() => {
+    pos2=navigator.getCurrentPosition()
+    longitude1=pos2.coords.longitude;
+    latitude1=pos2.coords.latitude;
+    speed=sqrt(((longitude1-longitude0)**2)+((latitude1-latitude0)**2))/1000
+    x.innerHTML="<br>Speed: "+speed.toString();
+    pos1=pos2
+  }, 1000);
+  
+}
