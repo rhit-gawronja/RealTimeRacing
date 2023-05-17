@@ -21,6 +21,12 @@ const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const x = document.getElementById("demo");
 const startButton = document.getElementById("raceStart")
+const watchID = navigator.geolocation.watchPosition((position) => {
+  updateFirebase(position.coords.latitude, position.coords.longitude);
+});
+function updateFirebase(lat,lon){
+
+}
 function getLocation() {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(showPosition);
