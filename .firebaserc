@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "real-time-racing-d2164"
-  }
+    "default": "real-time-racing-d2164",
+    "staging": "real-time-racing-d2164"
+  },
+  "targets": {},
+  "etags": {}
 }

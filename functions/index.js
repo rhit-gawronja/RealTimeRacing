@@ -10,9 +10,6 @@ const auth = require("firebase/auth");
 const firestore = require("firebase/firestore");
 const app = express();
 
-// db stuff
-//const statsRef=collection(db,"stats");
-
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(cookieParser());
@@ -32,6 +29,20 @@ app.use(express.static("public"));
 firebase.initializeApp(creds);
 const db = firestore.getFirestore();
 const statsRef = firestore.collection(db, "stats");
+const racesRef = firestore.collection(db, "races");
+
+const verifyUserInRace = async (req, res, next) => {
+  const uid = req.session.user.id;
+  let query = firestore.query(racesRef);
+  let querySnapshot = await firestore.getDocs(query);
+  querySnapshot.docs.every((doc) => {
+    let data = doc.data();
+    if (data.user1 == uid || data.user2 == uid) {
+      next();
+    }
+  });
+  res.status(403).send("Unauthorized");
+};
 
 app.get("/csrf-token", csrfProtection, (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
@@ -66,8 +77,11 @@ app.put("/login", csrfProtection, (req, res) => {
 
 app.put("/updateLocation", csrfProtection, async (req, res) => {
   let { latitude, longitude } = req.body;
-  console.log(latitude, longitude);
+
   let userID = req.session.user;
+  if (!userID) {
+    res.sendStatus(500);
+  }
   const query = firestore.query(
     statsRef,
     firestore.where("userid", "==", userID.uid)
@@ -82,16 +96,132 @@ app.put("/updateLocation", csrfProtection, async (req, res) => {
   });
 });
 
+function generateRandomPoint(latitude, longitude, distance) {
+  const earthRadius = 3959; // Radius of the Earth in miles
+
+  // Convert latitude and longitude to radians
+  const lat1 = toRadians(latitude);
+  const lon1 = toRadians(longitude);
+
+  // Convert distance to radians (1 mile = 0.0144927536 radians)
+  const angularDistance = distance / earthRadius;
+
+  // Generate a random angle in radians (between 0 and 2π)
+  const randomAngle = Math.random() * 2 * Math.PI;
+
+  // Calculate the new latitude using the Haversine formula
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(angularDistance) +
+      Math.cos(lat1) * Math.sin(angularDistance) * Math.cos(randomAngle)
+  );
+
+  // Calculate the new longitude using the Haversine formula
+  const lon2 =
+    lon1 +
+    Math.atan2(
+      Math.sin(randomAngle) * Math.sin(angularDistance) * Math.cos(lat1),
+      Math.cos(angularDistance) - Math.sin(lat1) * Math.sin(lat2)
+    );
+
+  // Convert the new latitude and longitude back to degrees
+  const newLatitude = toDegrees(lat2);
+  const newLongitude = toDegrees(lon2);
+
+  return { latitude: newLatitude, longitude: newLongitude };
+}
+
+function areCoordinatesWithinDistance(lat1, lon1, lat2, lon2, distance) {
+  const earthRadius = 3959; // Radius of the Earth in miles
+
+  // Convert latitude and longitude to radians
+  const latRad1 = toRadians(lat1);
+  const lonRad1 = toRadians(lon1);
+  const latRad2 = toRadians(lat2);
+  const lonRad2 = toRadians(lon2);
+
+  // Calculate the differences between coordinates
+  const deltaLat = latRad2 - latRad1;
+  const deltaLon = lonRad2 - lonRad1;
+
+  // Calculate the distance using the Haversine formula
+  const a =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(latRad1) * Math.cos(latRad2) * Math.sin(deltaLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const calculatedDistance = earthRadius * c;
+
+  // Check if the calculated distance is within the given distance threshold
+  return calculatedDistance <= distance;
+}
+
+// Helper function to convert degrees to radians
+function toRadians(degrees) {
+  return degrees * (Math.PI / 180);
+}
+
+async function startNewRace(user1id, user2id, latitude, longitude) {
+  let query1 = firestore.query(
+    statsRef,
+    firestore.where("userid:", "==", user1id)
+  );
+  let query1Snapshot = await firestore.getDocs(query1);
+  query1Snapshot.forEach((doc) => {
+    firestore.updateDoc(doc.ref, { inrace: true });
+  });
+
+  let query2 = firestore.query(
+    statsRef,
+    firestore.where("userid:", "==", user1id)
+  );
+  let query2Snapshot = await firestore.getDocs(query2);
+  query2Snapshot.forEach((doc) => {
+    firestore.updateDoc(doc.ref, { inrace: true });
+  });
+
+  // 1 mile apart? change later
+  let raceDestination = generateRandomPoint(latitude, longitude, 1);
+
+  firestore.addDoc(racesRef, {
+    user1: user1id,
+    user2: user2id,
+    location: new firestore.GeoPoint(
+      raceDestination.latitude,
+      raceDestination.longitude
+    ),
+    winner: null,
+  });
+}
+
+app.get("/racelobby", csrfProtection, verifyUserInRace, (req, res) => {
+  render("racelobby");
+});
+
 app.put("/findNearbyRacer", csrfProtection, async (req, res) => {
   let { latitude, longitude } = req.body;
+  console.log("searching for racer");
   let query = firestore.query(statsRef);
   let querySnapshot = await firestore.getDocs(query);
+  let userID = req.session.user.uid;
   console.log("your location", latitude, longitude);
-  querySnapshot.forEach((doc) => {
+  querySnapshot.docs.every((doc) => {
     const data = doc.data();
-    let location = data.location;
-    console.log("other", location);
+    if (data.userid == userID) {
+      return true;
+    }
+    const regex = /_lat: ([\d.-]+), _long: ([\d.-]+)/;
+    const loc = data.location.match(regex);
+
+    if (
+      areCoordinatesWithinDistance(latitude, longitude, loc[1], loc[2], 0.25)
+    ) {
+      startNewRace(userID, data.useruid, latitude, longitude);
+      res.redirect("/racelobby");
+      return false;
+    } else {
+      return true;
+    }
   });
+  res.sendStatus(301);
 });
 
 exports.app = functions.https.onRequest(app);
