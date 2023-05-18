@@ -1,15 +1,17 @@
 const functions = require("firebase-functions");
 const express = require("express");
-const serviceAccount = require("./creds.json");
+const creds = require("./creds.json");
 const session = require("express-session");
 const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
-const admin = require("firebase-admin");
 const csrf = require("csurf");
+const firebase = require("firebase/app");
+const auth = require("firebase/auth");
 
 const app = express();
 
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
 app.use(cookieParser());
 app.use(
   session({
@@ -24,10 +26,7 @@ const csrfProtection = csrf({ cookie: true });
 app.set("view engine", "ejs");
 app.use(express.static("public"));
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://real-time-racing-d2164-default-rtdb.firebaseio.com",
-});
+firebase.initializeApp(creds);
 
 app.get("/csrf-token", csrfProtection, (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
@@ -45,18 +44,20 @@ app.put("/login", csrfProtection, (req, res) => {
   let email = req.body.email;
   let password = req.body.password;
 
-  admin
-    .auth()
-    .signInWithEmailAndPassword(email, password)
+  auth
+    .signInWithEmailAndPassword(auth.getAuth(), email, password)
     .then((userCredential) => {
       req.session.user = userCredential.user;
       res.status(200).json({ message: "Login successful" });
     })
     .catch((error) => {
+      console.log(error);
       res.status(401).json({ message: "Invalid email or password" });
     });
 });
+
 app.get("/racepage", (req, res) => {
   res.render("racePage");
 });
+
 exports.app = functions.https.onRequest(app);
