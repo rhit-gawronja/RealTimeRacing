@@ -1,9 +1,8 @@
 async function getCSRF() {
-  let csrfToken;
-  fetch("/csrf-token")
+  return fetch("/csrf-token")
     .then((response) => response.json())
     .then((data) => {
-      csrfToken = data.csrfToken;
+      return data.csrfToken;
     });
 }
 
@@ -27,7 +26,7 @@ document.querySelector("#submitlogin").onclick = async () => {
   })
     .then((response) => response.json())
     .then((data) => {
-      window.location.href("/");
+      console.log(data);
     })
     .catch((error) => {
       console.error(error);
