@@ -60,21 +60,3 @@ function getSpeed(position) {
     pos1 = pos2;
   }, 1000);
 }
-
-document.querySelector("#submitlogin").onclick = () => {
-  let email = document.querySelector("#email").value;
-  let password = document.querySelector("#password").value;
-
-  firebase
-    .auth()
-    .signInWithEmailAndPassword(email, password)
-    .then((userCredential) => {
-      const user = userCredential.user;
-      console.log("User logged in:", user);
-    })
-    .catch((error) => {
-      const errorCode = error.code;
-      const errorMessage = error.message;
-      console.error("Login error:", errorCode, errorMessage);
-    });
-};

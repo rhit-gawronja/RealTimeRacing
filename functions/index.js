@@ -22,23 +22,39 @@ app.use(
 app.use(csrf({ cookie: true }));
 const csrfProtection = csrf({ cookie: true });
 app.set("view engine", "ejs");
+app.use(express.static("public"));
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://real-time-racing-d2164-default-rtdb.firebaseio.com",
 });
 
-app.get("/", (req, res) => {
+app.get("/csrf-token", csrfProtection, (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+});
+
+app.get("/", csrfProtection, (req, res) => {
   if (req.session.user) {
-    res.render("home", { user: req.session.user });
+    res.render("home", { user: req.session.user, csrfToken: req.csrfToken() });
   } else {
-    res.redirect("/login");
+    res.render("login", { error: null, csrfToken: req.csrfToken() });
   }
 });
 
-app.get("/login", (req, res) => {
-  // const authURL = getGoogleAuthURL();
-  res.render("login");
+app.put("/login", csrfProtection, (req, res) => {
+  let email = req.body.email;
+  let password = req.body.password;
+
+  admin
+    .auth()
+    .signInWithEmailAndPassword(email, password)
+    .then((userCredential) => {
+      req.session.user = userCredential.user;
+      res.status(200).json({ message: "Login successful" });
+    })
+    .catch((error) => {
+      res.status(401).json({ message: "Invalid email or password" });
+    });
 });
 
 exports.app = functions.https.onRequest(app);
