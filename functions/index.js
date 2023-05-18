@@ -1,6 +1,6 @@
 const functions = require("firebase-functions");
 const express = require("express");
-const serviceAccount = require("../creds.json");
+const serviceAccount = require("./creds.json");
 const session = require("express-session");
 const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
