@@ -26,7 +26,7 @@ document.querySelector("#submitlogin").onclick = async () => {
   })
     .then((response) => response.json())
     .then((data) => {
-      console.log(data);
+      window.location.href = "/";
     })
     .catch((error) => {
       console.error(error);

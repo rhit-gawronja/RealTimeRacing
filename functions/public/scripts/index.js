@@ -13,47 +13,49 @@ const firebaseConfig = {
   storageBucket: "real-time-racing-d2164.appspot.com",
   messagingSenderId: "371648213477",
   appId: "1:371648213477:web:594dc5a501712f16657f0c",
-  measurementId: "G-DNHWYZ96DS"
+  measurementId: "G-DNHWYZ96DS",
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const x = document.getElementById("demo");
-const startButton = document.getElementById("raceStart")
+const startButton = document.getElementById("raceStart");
 const watchID = navigator.geolocation.watchPosition((position) => {
   updateFirebase(position.coords.latitude, position.coords.longitude);
 });
-function updateFirebase(lat,lon){
-
-}
+function updateFirebase(lat, lon) {}
 function getLocation() {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(showPosition);
-  } else { 
+  } else {
     x.innerHTML = "Geolocation is not supported by this browser.";
   }
 }
 
 function showPosition(position) {
-  x.innerHTML = "Latitude: " + position.coords.latitude + 
-  "<br>Longitude: " + position.coords.longitude;
+  x.innerHTML =
+    "Latitude: " +
+    position.coords.latitude +
+    "<br>Longitude: " +
+    position.coords.longitude;
 }
-pos0={
-  long:0,
-  lat:0,
-}
+pos0 = {
+  long: 0,
+  lat: 0,
+};
 function getSpeed(position) {
-  longitude0=position.coords.longitude
-  latitude0=position.coords.latitude
+  longitude0 = position.coords.longitude;
+  latitude0 = position.coords.latitude;
   // postition updater
   setInterval(() => {
-    pos2=navigator.getCurrentPosition()
-    longitude1=pos2.coords.longitude;
-    latitude1=pos2.coords.latitude;
-    speed=sqrt(((longitude1-longitude0)**2)+((latitude1-latitude0)**2))/1000
-    x.innerHTML="<br>Speed: "+speed.toString();
-    pos1=pos2
+    pos2 = navigator.getCurrentPosition();
+    longitude1 = pos2.coords.longitude;
+    latitude1 = pos2.coords.latitude;
+    speed =
+      sqrt((longitude1 - longitude0) ** 2 + (latitude1 - latitude0) ** 2) /
+      1000;
+    x.innerHTML = "<br>Speed: " + speed.toString();
+    pos1 = pos2;
   }, 1000);
-  
 }

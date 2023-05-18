@@ -30,6 +30,8 @@ app.set("view engine", "ejs");
 app.use(express.static("public"));
 
 firebase.initializeApp(creds);
+const db = firestore.getFirestore();
+const statsRef = firestore.collection(db, "stats");
 
 app.get("/csrf-token", csrfProtection, (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
@@ -37,7 +39,10 @@ app.get("/csrf-token", csrfProtection, (req, res) => {
 
 app.get("/", csrfProtection, (req, res) => {
   if (req.session.user) {
-    res.render("home", { user: req.session.user, csrfToken: req.csrfToken() });
+    res.render("racePage", {
+      user: req.session.user,
+      csrfToken: req.csrfToken(),
+    });
   } else {
     res.render("login", { error: null, csrfToken: req.csrfToken() });
   }
@@ -59,14 +64,38 @@ app.put("/login", csrfProtection, (req, res) => {
     });
 });
 
-app.get("/racepage", (req, res) => {
-  res.render("racePage");
+app.put("/updateLocation", async (req, res) => {
+  let { latitude, longitude } = req.body;
+  console.log(latitude, longitude);
+  let userID = req.session.user;
+  const query = firestore.query(
+    statsRef,
+    firestore.where("userid", "==", userID.uid)
+  );
+  const querySnapshot = await firestore.getDocs(query);
+
+  querySnapshot.forEach((doc) => {
+    let loc = new firestore.GeoPoint(latitude, longitude);
+    firestore.updateDoc(doc.ref, { location: loc });
+    res.status(200).json({ message: "location updated" });
+    return;
+  });
 });
 
-app.get("/stats", (req, res) => {
-  const db = firestore.getFirestore();
-  const statsRef = firestore.collection(db, "stats");
-  console.log(statsRef);
+app.put("/findNearbyRacer", (req, res) => {
+  let { latitude, longitude } = req.body;
+  statsRef
+    .get()
+    .then((querySnapshot) => {
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        let location = data.location;
+        console.log(location);
+      });
+    })
+    .catch((error) => {
+      res.status("401").json({ message: "Error fetching stats" });
+    });
 });
 
 exports.app = functions.https.onRequest(app);
