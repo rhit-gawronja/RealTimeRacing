@@ -7,19 +7,11 @@ const bodyParser = require("body-parser");
 const csrf = require("csurf");
 const firebase = require("firebase/app");
 const auth = require("firebase/auth");
-
+const firestore = require("firebase-admin/firestore");
 const app = express();
 
 // db stuff
-const {initializeApp}=require('firebase-admin/app');
-const {collection,getFirestore}= require("firebase-admin/firestore");
 //const statsRef=collection(db,"stats");
-initializeApp();
-const db=getFirestore();
-  const statsRef=collection(db,"stats");
-  console.log(statsRef)
-
-
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -70,5 +62,9 @@ app.put("/login", csrfProtection, (req, res) => {
 app.get("/racepage", (req, res) => {
   res.render("racePage");
 });
+
+const db = firestore.getFirestore();
+const statsRef = db.collection("stats");
+console.log(statsRef);
 
 exports.app = functions.https.onRequest(app);
