@@ -6,7 +6,6 @@ const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
 const admin = require("firebase-admin");
 const csrf = require("csurf");
-const rp = require("./scripts/racePage");
 
 const app = express();
 
