@@ -6,6 +6,7 @@ const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
 const admin = require("firebase-admin");
 const csrf = require("csurf");
+const rp = require("./scripts/racePage");
 
 const app = express();
 
@@ -56,5 +57,7 @@ app.put("/login", csrfProtection, (req, res) => {
       res.status(401).json({ message: "Invalid email or password" });
     });
 });
-
+app.get("/racepage", (req, res) => {
+  res.render("racePage");
+});
 exports.app = functions.https.onRequest(app);
