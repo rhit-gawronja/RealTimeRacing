@@ -33,7 +33,7 @@ const racesRef = firestore.collection(db, "races");
 
 const verifyUserInRace = async (req, res, next) => {
   if (!req.session.user) {
-    res.status(403).send("Unauthorized: No User");
+    res.redirect("/");
     return;
   }
   const uid = req.session.user.uid;
@@ -282,7 +282,7 @@ app.put("/findNearbyRacer", csrfProtection, async (req, res) => {
   res.status(404).json({ message: "no racers found" });
 });
 
-app.get("/getRaceData", csrfProtection, verifyUserInRace, (req, res) => {
+app.get("/getRaceData", csrfProtection, (req, res) => {
   let userid = req.session.user.uid;
   let q = firestore.query(racesRef);
   let qs = firestore.getDocs(q);
@@ -295,6 +295,43 @@ app.get("/getRaceData", csrfProtection, verifyUserInRace, (req, res) => {
     }
   }
   res.sendStatus(404);
+});
+
+app.get("/checkRaceLost", csrfProtection, async (req, res) => {
+  if (!req.session.user) {
+    res.status(403).send("Unauthorized: No User");
+    return;
+  }
+  const uid = req.session.user.uid;
+  let query = firestore.query(racesRef);
+  let querySnapshot = await firestore.getDocs(query);
+  for (let doc of querySnapshot.docs) {
+    let data = doc.data();
+    if (data.user1 == uid || data.user2 == uid) {
+      res.status(200).send("Race currently active");
+      return;
+    }
+  }
+  res.status(201).send("Race lost");
+});
+
+app.put("/winRace", csrfProtection, verifyUserInRace, async (req, res) => {
+  if (!req.session.user) {
+    res.status(403).send("Unauthorized: No User");
+    return;
+  }
+  const uid = req.session.user.uid;
+  let query = firestore.query(racesRef);
+  let querySnapshot = await firestore.getDocs(query);
+  for (let doc of querySnapshot.docs) {
+    let data = doc.data();
+    if (data.user1 == uid || data.user2 == uid) {
+      firestore.deleteDoc(doc.ref);
+      res.status(200).send("Race destroyed");
+      return;
+    }
+  }
+  res.status(404).send("No race found");
 });
 
 exports.app = functions.https.onRequest(app);
