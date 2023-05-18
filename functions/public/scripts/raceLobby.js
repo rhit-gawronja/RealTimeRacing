@@ -1,3 +1,13 @@
+destinationLat=0.0
+destinationLng=0.0
+
+async function getCSRF() {
+  return fetch("/csrf-token")
+    .then((response) => response.json())
+    .then((data) => {
+      return data.csrfToken;
+    });
+}
 navigator.geolocation.getCurrentPosition(function(position) {
   var currentLat = position.coords.latitude;
   var currentLng = position.coords.longitude;
@@ -28,8 +38,15 @@ navigator.geolocation.getCurrentPosition(function(position) {
   map.fitBounds(bounds);
 });
 async function getRaceLobby(){
-  return fetch("/getRaceData")
-    .then((response)=>response.json())
+  return fetch("/getRaceData",{
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "CSRF-Token": getCSRF(),
+    },
+
+  })
+    .then((response)=>console.log(response))
     .then((data)=>{
       console.log(data)
     }).catch((error)=>

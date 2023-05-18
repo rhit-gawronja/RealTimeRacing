@@ -21,7 +21,8 @@
     "express-session": "^1.17.3",
     "firebase": "^9.22.0",
     "firebase-functions": "^3.18.0",
-    "geofire-common": "^6.0.0"
+    "geofire-common": "^6.0.0",
+    "leaflet-routing-machine": "^3.2.12"
   },
   "devDependencies": {
     "firebase-functions-test": "^0.2.0"
