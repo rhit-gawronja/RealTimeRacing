@@ -64,7 +64,7 @@ app.put("/login", csrfProtection, (req, res) => {
     });
 });
 
-app.put("/updateLocation", async (req, res) => {
+app.put("/updateLocation", csrfProtection, async (req, res) => {
   let { latitude, longitude } = req.body;
   console.log(latitude, longitude);
   let userID = req.session.user;
@@ -82,20 +82,16 @@ app.put("/updateLocation", async (req, res) => {
   });
 });
 
-app.put("/findNearbyRacer", (req, res) => {
+app.put("/findNearbyRacer", csrfProtection, async (req, res) => {
   let { latitude, longitude } = req.body;
-  statsRef
-    .get()
-    .then((querySnapshot) => {
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        let location = data.location;
-        console.log(location);
-      });
-    })
-    .catch((error) => {
-      res.status("401").json({ message: "Error fetching stats" });
-    });
+  let query = firestore.query(statsRef);
+  let querySnapshot = await firestore.getDocs(query);
+  console.log("your location", latitude, longitude);
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    let location = data.location;
+    console.log("other", location);
+  });
 });
 
 exports.app = functions.https.onRequest(app);
