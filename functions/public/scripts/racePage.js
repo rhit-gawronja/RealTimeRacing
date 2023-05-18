@@ -86,12 +86,9 @@ let id = setInterval(async () => {
 
 const watchID = navigator.geolocation.watchPosition(async (position) => {
   let csrfToken = await getCSRF();
-<<<<<<< HEAD
   updateRace(position.coords.latitude,position.coords.longitude);
   console.log(position.coords.latitude, position.coords.longitude);
-=======
   current_location = position;
->>>>>>> 84d01bc282e4b743de6a66d693ef6efe7cff03a9
   fetch("/updateLocation", {
     method: "PUT",
     headers: {
