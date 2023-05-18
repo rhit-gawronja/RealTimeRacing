@@ -282,4 +282,19 @@ app.put("/findNearbyRacer", csrfProtection, async (req, res) => {
   res.status(404).json({ message: "no racers found" });
 });
 
+app.put("/getRaceData", csrfProtection, verifyUserInRace, (req, res) => {
+  let userid = req.session.user.uid;
+  let q = firestore.query(racesRef);
+  let qs = firestore.getDocs(q);
+
+  for (let doc of qs.docs) {
+    let data = doc.data();
+    if (data.user1 == userid || data.user2 == userid) {
+      res.status(200).json(data);
+      return;
+    }
+  }
+  res.sendStatus(404);
+});
+
 exports.app = functions.https.onRequest(app);
