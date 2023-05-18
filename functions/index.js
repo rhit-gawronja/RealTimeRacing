@@ -32,7 +32,11 @@ const statsRef = firestore.collection(db, "stats");
 const racesRef = firestore.collection(db, "races");
 
 const verifyUserInRace = async (req, res, next) => {
-  const uid = req.session.user.id;
+  if (!req.session.user) {
+    res.status(403).send("Unauthorized: No User");
+    return;
+  }
+  const uid = req.session.user.uid;
   let query = firestore.query(racesRef);
   let querySnapshot = await firestore.getDocs(query);
   for (let doc of querySnapshot.docs) {
@@ -42,7 +46,7 @@ const verifyUserInRace = async (req, res, next) => {
       return;
     }
   }
-  res.status(403).send("Unauthorized");
+  res.status(403).send("Unauthorized: Not in Race");
 };
 
 app.get("/csrf-token", csrfProtection, (req, res) => {
@@ -194,6 +198,27 @@ async function startNewRace(user1id, user2id, latitude, longitude) {
       raceDestination.longitude
     ),
     winner: null,
+    expiration: new Date(new Date().getTime() + 10 * 60 * 1000),
+  });
+}
+
+async function removeUsersFromRace(user1id, user2id) {
+  let query1 = firestore.query(
+    statsRef,
+    firestore.where("userid", "==", user1id)
+  );
+  let query1Snapshot = await firestore.getDocs(query1);
+  query1Snapshot.forEach((doc) => {
+    firestore.updateDoc(doc.ref, { inrace: false });
+  });
+
+  let query2 = firestore.query(
+    statsRef,
+    firestore.where("userid", "==", user2id)
+  );
+  let query2Snapshot = await firestore.getDocs(query2);
+  query2Snapshot.forEach((doc) => {
+    firestore.updateDoc(doc.ref, { inrace: false });
   });
 }
 
@@ -206,8 +231,15 @@ app.put("/findNearbyRacer", csrfProtection, async (req, res) => {
   let qv = firestore.query(racesRef);
   let qvsnap = await firestore.getDocs(qv);
   let alreadyInRace = false;
-  qvsnap.forEach((doc) => {
+  qvsnap.forEach(async (doc) => {
     let data = doc.data();
+    let expiration = data.expiration.toDate();
+    if (new Date() > expiration) {
+      console.log("RACE EXPIRED");
+      await firestore.deleteDoc(doc.ref);
+      await removeUsersFromRace(data.user1, data.user2);
+      return;
+    }
     if (data.user1 == userID || data.user2 == userID) {
       alreadyInRace = true;
     }

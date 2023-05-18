@@ -30,7 +30,9 @@ let id = setInterval(async () => {
   })
     .then((response) => {
       if (response.status === 200) {
-        window.location.href = "/racelobby";
+        setTimeout(() => {
+          window.location.href = "/racelobby";
+        }, 2000);
       }
       return response.json();
     })
@@ -42,7 +44,7 @@ let id = setInterval(async () => {
       console.error(error);
       isSearchingForRacer = false;
     });
-}, 5000);
+}, 3000);
 
 const watchID = navigator.geolocation.watchPosition(async (position) => {
   let csrfToken = await getCSRF();
