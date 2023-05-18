@@ -9,6 +9,17 @@ const csrf = require("csurf");
 
 const app = express();
 
+// db stuff
+const {initializeApp}=require('firebase-admin/app');
+const {collection,getFirestore}= require("firebase-admin/firestore");
+//const statsRef=collection(db,"stats");
+initializeApp();
+const db=getFirestore();
+  const statsRef=collection(db,"stats");
+  console.log(statsRef)
+
+
+
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(
