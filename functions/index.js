@@ -35,12 +35,13 @@ const verifyUserInRace = async (req, res, next) => {
   const uid = req.session.user.id;
   let query = firestore.query(racesRef);
   let querySnapshot = await firestore.getDocs(query);
-  querySnapshot.docs.every((doc) => {
+  for (let doc of querySnapshot.docs) {
     let data = doc.data();
     if (data.user1 == uid || data.user2 == uid) {
       next();
+      return;
     }
-  });
+  }
   res.status(403).send("Unauthorized");
 };
 
@@ -158,11 +159,15 @@ function areCoordinatesWithinDistance(lat1, lon1, lat2, lon2, distance) {
 function toRadians(degrees) {
   return degrees * (Math.PI / 180);
 }
+function toDegrees(radians) {
+  return radians * (180 / Math.PI);
+}
 
 async function startNewRace(user1id, user2id, latitude, longitude) {
+  console.log("CREATING RACE\n");
   let query1 = firestore.query(
     statsRef,
-    firestore.where("userid:", "==", user1id)
+    firestore.where("userid", "==", user1id)
   );
   let query1Snapshot = await firestore.getDocs(query1);
   query1Snapshot.forEach((doc) => {
@@ -171,7 +176,7 @@ async function startNewRace(user1id, user2id, latitude, longitude) {
 
   let query2 = firestore.query(
     statsRef,
-    firestore.where("userid:", "==", user1id)
+    firestore.where("userid", "==", user2id)
   );
   let query2Snapshot = await firestore.getDocs(query2);
   query2Snapshot.forEach((doc) => {
@@ -193,35 +198,56 @@ async function startNewRace(user1id, user2id, latitude, longitude) {
 }
 
 app.get("/racelobby", csrfProtection, verifyUserInRace, (req, res) => {
-  render("racelobby");
+  res.render("racelobby");
 });
 
 app.put("/findNearbyRacer", csrfProtection, async (req, res) => {
-  let { latitude, longitude } = req.body;
-  console.log("searching for racer");
-  let query = firestore.query(statsRef);
-  let querySnapshot = await firestore.getDocs(query);
   let userID = req.session.user.uid;
-  console.log("your location", latitude, longitude);
-  querySnapshot.docs.every((doc) => {
-    const data = doc.data();
-    if (data.userid == userID) {
-      return true;
-    }
-    const regex = /_lat: ([\d.-]+), _long: ([\d.-]+)/;
-    const loc = data.location.match(regex);
-
-    if (
-      areCoordinatesWithinDistance(latitude, longitude, loc[1], loc[2], 0.25)
-    ) {
-      startNewRace(userID, data.useruid, latitude, longitude);
-      res.redirect("/racelobby");
-      return false;
-    } else {
-      return true;
+  let qv = firestore.query(racesRef);
+  let qvsnap = await firestore.getDocs(qv);
+  let alreadyInRace = false;
+  qvsnap.forEach((doc) => {
+    let data = doc.data();
+    if (data.user1 == userID || data.user2 == userID) {
+      alreadyInRace = true;
     }
   });
-  res.sendStatus(301);
+  if (alreadyInRace) {
+    console.log("ALREADY IN RACE");
+    res.status(200).json({ message: "race started" });
+    return;
+  }
+
+  let { latitude, longitude } = req.body;
+
+  let query = firestore.query(statsRef);
+  let querySnapshot = await firestore.getDocs(query);
+  if (!req.session.user) {
+    res.status(401).json({ message: "invalid user" });
+    return;
+  }
+
+  for (const doc of querySnapshot.docs) {
+    const data = doc.data();
+    if (data.userid === userID || data.inrace === true) {
+      continue; // Skip this document and proceed to the next one
+    }
+
+    if (
+      areCoordinatesWithinDistance(
+        latitude,
+        longitude,
+        data.location.latitude,
+        data.location.longitude,
+        0.25
+      )
+    ) {
+      await startNewRace(userID, data.userid, latitude, longitude);
+      res.status(200).json({ message: "race started" });
+      return;
+    }
+  }
+  res.status(404).json({ message: "no racers found" });
 });
 
 exports.app = functions.https.onRequest(app);
