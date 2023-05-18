@@ -7,7 +7,7 @@ const bodyParser = require("body-parser");
 const csrf = require("csurf");
 const firebase = require("firebase/app");
 const auth = require("firebase/auth");
-const firestore = require("firebase-admin/firestore");
+const firestore = require("firebase/firestore");
 const app = express();
 
 // db stuff
@@ -63,8 +63,10 @@ app.get("/racepage", (req, res) => {
   res.render("racePage");
 });
 
-const db = firestore.getFirestore();
-const statsRef = db.collection("stats");
-console.log(statsRef);
+app.get("/stats", (req, res) => {
+  const db = firestore.getFirestore();
+  const statsRef = firestore.collection(db, "stats");
+  console.log(statsRef);
+});
 
 exports.app = functions.https.onRequest(app);
