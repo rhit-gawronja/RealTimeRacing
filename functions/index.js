@@ -29,21 +29,16 @@ admin.initializeApp({
 });
 
 app.get("/", (req, res) => {
-  const date = new Date();
-  const hours = (date.getHours() % 12) + 1; // London is UTC + 1hr;
-  res.send(`
-      <!doctype html>
-      <head>
-        <title>Time</title>
-        <link rel="stylesheet" href="/style.css">
-        <script src="/script.js"></script>
-      </head>
-      <body>
-        <p>In London, the clock strikes:
-          <span id="bongs">${"BONG ".repeat(hours)}</span></p>
-        <button onClick="refresh(this)">Refresh</button>
-      </body>
-    </html>`);
+  if (req.session.user) {
+    res.render("home", { user: req.session.user });
+  } else {
+    res.redirect("/login");
+  }
+});
+
+app.get("/login", (req, res) => {
+  // const authURL = getGoogleAuthURL();
+  res.render("login");
 });
 
 exports.app = functions.https.onRequest(app);
