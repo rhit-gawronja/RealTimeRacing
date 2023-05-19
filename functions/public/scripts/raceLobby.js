@@ -1,5 +1,5 @@
-let destinationLat = 0.0;
-let destinationLng = 0.0;
+let destinationLat = 39.472298;
+let destinationLng = -87.401917;
 
 async function getCSRF() {
   return fetch("/csrf-token")
