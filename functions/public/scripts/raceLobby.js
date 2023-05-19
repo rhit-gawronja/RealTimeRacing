@@ -23,11 +23,8 @@ async function setupMap() {
     var currentLng = position.coords.longitude;
 
     // Create the map
-    var map = L.map("map").setView([currentLat, currentLng], 10);
-    mapStr = `https://tile.openstreetmap.org/15/${lon2tile(
-      currentLng,
-      15
-    )}/${lat2tile(currentLat, 15)}.png`;
+    var map = L.map("map").setView([currentLat, currentLng], 15);
+    mapStr = `https://tile.openstreetmap.org/{z}/{x}/{y}.png`;
     // Add the OpenStreetMap tile layer
     L.tileLayer(mapStr, {
       attribution: "Map data © OpenStreetMap contributors",
