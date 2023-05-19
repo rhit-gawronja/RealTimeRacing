@@ -162,7 +162,6 @@ let id = setInterval(async () => {
   if (currentlyCheckingRace) {
     return;
   }
-  console.log("checking shit");
   currentlyCheckingRace = true;
   let csrfToken = await getCSRF();
   let raceLost = await checkIfRaceLost(csrfToken);
