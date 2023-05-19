@@ -1,5 +1,5 @@
-destinationLat = 0.0;
-destinationLng = 0.0;
+let destinationLat = 0.0;
+let destinationLng = 0.0;
 
 async function getCSRF() {
   return fetch("/csrf-token")
@@ -15,60 +15,90 @@ const watchID = navigator.geolocation.watchPosition(async (position) => {
   current_location = position;
 });
 
-navigator.geolocation.getCurrentPosition(function (position) {
-  var currentLat = position.coords.latitude;
-  var currentLng = position.coords.longitude;
+async function setupMap() {
+  await getRaceLobby();
 
-  // Create the map
-  var map = L.map("map").setView([currentLat, currentLng], 13);
+  navigator.geolocation.getCurrentPosition(function (position) {
+    var currentLat = position.coords.latitude;
+    var currentLng = position.coords.longitude;
 
-  // Add the OpenStreetMap tile layer
-  L.tileLayer(
-    "https://%7Bs%7D.tile.openstreetmap.org/%7Bz%7D/%7Bx%7D/%7By%7D.png",
-    {
+    // Create the map
+    var map = L.map("map").setView([currentLat, currentLng], 10);
+    mapStr = `https://tile.openstreetmap.org/15/${lon2tile(
+      currentLng,
+      15
+    )}/${lat2tile(currentLat, 15)}.png`;
+    // Add the OpenStreetMap tile layer
+    L.tileLayer(mapStr, {
       attribution: "Map data © OpenStreetMap contributors",
-    }
-  ).addTo(map);
+    }).addTo(map);
 
-  // Create markers for current position and destination
-  var currentMarker = L.marker([currentLat, currentLng]).addTo(map);
-  var destinationMarker = L.marker([destinationLat, destinationLng]).addTo(map);
+    // Create markers for current position and destination
+    var currentMarker = L.marker([currentLat, currentLng]).addTo(map);
+    var destinationMarker = L.marker([destinationLat, destinationLng]).addTo(
+      map
+    );
 
-  // Create a routing control instance
-  var routingControl = L.Routing.control({
-    waypoints: [
-      L.latLng(currentLat, currentLng),
-      L.latLng(destinationLat, destinationLng),
-    ],
-    routeWhileDragging: true,
-  }).addTo(map);
+    console.log("LatStart: " + currentLat + "lonStart:" + currentLng);
+    console.log("LatEnd: " + destinationLat + "lonEnd:" + destinationLng);
+    // Create a routing control instance
+    var routingControl = L.Routing.control({
+      waypoints: [
+        L.latLng(currentLat, currentLng),
+        L.latLng(destinationLat, destinationLng),
+      ],
+      router: L.Routing.mapbox(
+        "sk.eyJ1IjoiZ2F3cm9uamEiLCJhIjoiY2xodHF5cnFxMzh3MzNycWtqYnVlajVucyJ9.Dj3AELyPknstTxq_hw7Lgg"
+      ),
+      routeWhileDragging: true,
+    }).addTo(map);
 
-  // Fit the map bounds to include both markers
-  var bounds = L.latLngBounds([
-    currentMarker.getLatLng(),
-    destinationMarker.getLatLng(),
-  ]);
-  map.fitBounds(bounds);
-});
+    // Fit the map bounds to include both markers
+    var bounds = L.latLngBounds([
+      currentMarker.getLatLng(),
+      destinationMarker.getLatLng(),
+    ]);
+    map.fitBounds(bounds);
+  });
+}
+
+function lon2tile(lon, zoom) {
+  return Math.floor(((lon + 180) / 360) * Math.pow(2, zoom));
+}
+function lat2tile(lat, zoom) {
+  return Math.floor(
+    ((1 -
+      Math.log(
+        Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)
+      ) /
+        Math.PI) /
+      2) *
+      Math.pow(2, zoom)
+  );
+}
 
 async function getRaceLobby() {
-  return fetch("/getRaceData", {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "CSRF-Token": getCSRF(),
-    },
-  })
-    .then((response) => console.log(response))
-    .then((data) => {
-      console.log(data);
+  return new Promise(async (resolve, reject) => {
+    let csrf = await getCSRF();
+    fetch("/getRaceData", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "CSRF-Token": csrf,
+      },
     })
-    .catch((error) => {
-      console.log(error);
-    })
-    .catch((error) => {
-      console.log(error);
-    });
+      .then((response) => response.json())
+      .then((data) => {
+        console.log(data);
+        destinationLat = data.location.latitude;
+        destinationLng = data.location.longitude;
+        resolve();
+      })
+      .catch((error) => {
+        console.log(error);
+        reject();
+      });
+  });
 }
 
 function checkIfRaceWon(lat, long, destLat, destLong) {
@@ -118,6 +148,7 @@ async function checkIfRaceLost(csrfToken) {
 }
 
 async function sendWinRace() {
+  let csrfToken = await getCSRF();
   await fetch("/winRace", {
     method: "PUT",
     headers: {
@@ -127,11 +158,14 @@ async function sendWinRace() {
   });
 }
 
+setupMap();
+
 let currentlyCheckingRace = false;
 let id = setInterval(async () => {
   if (currentlyCheckingRace) {
     return;
   }
+  console.log("checking shit");
   currentlyCheckingRace = true;
   let csrfToken = await getCSRF();
   let raceLost = await checkIfRaceLost(csrfToken);
@@ -141,13 +175,22 @@ let id = setInterval(async () => {
     return;
   }
   let raceWon = checkIfRaceWon(
-    current_location.latitude,
-    current_location.longitude,
-    0,
-    0
+    current_location.coords.latitude,
+    current_location.coords.longitude,
+    destinationLat,
+    destinationLng
   );
+
   if (raceWon) {
-    console.log("you won!");
+    clearInterval(id);
     await sendWinRace();
+  } else {
+    console.log(
+      current_location.coords.latitude,
+      current_location.coords.longitude,
+      destinationLat,
+      destinationLng
+    );
   }
+  currentlyCheckingRace = false;
 }, 4000);
