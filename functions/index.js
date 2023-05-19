@@ -282,10 +282,10 @@ app.put("/findNearbyRacer", csrfProtection, async (req, res) => {
   res.status(404).json({ message: "no racers found" });
 });
 
-app.get("/getRaceData", csrfProtection, (req, res) => {
+app.get("/getRaceData", csrfProtection, async (req, res) => {
   let userid = req.session.user.uid;
   let q = firestore.query(racesRef);
-  let qs = firestore.getDocs(q);
+  let qs = await firestore.getDocs(q);
 
   for (let doc of qs.docs) {
     let data = doc.data();
@@ -327,6 +327,24 @@ app.put("/winRace", csrfProtection, verifyUserInRace, async (req, res) => {
     let data = doc.data();
     if (data.user1 == uid || data.user2 == uid) {
       firestore.deleteDoc(doc.ref);
+
+      let query1 = firestore.query(
+        statsRef,
+        firestore.where("userid", "==", data.user1)
+      );
+      let query1Snapshot = await firestore.getDocs(query1);
+      query1Snapshot.forEach((doc) => {
+        firestore.updateDoc(doc.ref, { inrace: false });
+      });
+
+      let query2 = firestore.query(
+        statsRef,
+        firestore.where("userid", "==", data.user2)
+      );
+      let query2Snapshot = await firestore.getDocs(query2);
+      query2Snapshot.forEach((doc) => {
+        firestore.updateDoc(doc.ref, { inrace: false });
+      });
       res.status(200).send("Race destroyed");
       return;
     }

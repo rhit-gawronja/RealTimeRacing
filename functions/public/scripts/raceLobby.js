@@ -171,6 +171,8 @@ let id = setInterval(async () => {
   let raceLost = await checkIfRaceLost(csrfToken);
   if (raceLost) {
     console.log("race lost womp womp");
+    document.querySelector("#lossdiv").hidden = false;
+
     clearInterval(id);
     return;
   }
@@ -184,6 +186,7 @@ let id = setInterval(async () => {
   if (raceWon) {
     clearInterval(id);
     await sendWinRace();
+    document.querySelector("#windiv").hidden = false;
   } else {
     console.log(
       current_location.coords.latitude,
